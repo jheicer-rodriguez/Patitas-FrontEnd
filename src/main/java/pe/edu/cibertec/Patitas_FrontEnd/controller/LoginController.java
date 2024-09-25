@@ -7,9 +7,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import pe.edu.cibertec.Patitas_FrontEnd.ViewModel.LoginModel;
-import pe.edu.cibertec.Patitas_FrontEnd.ViewModel.LoginRestTemplate;
+import pe.edu.cibertec.Patitas_FrontEnd.DTO.LoginRequestDTO;
+import pe.edu.cibertec.Patitas_FrontEnd.DTO.LoginResponseDTO;
 
 
 @Controller
@@ -24,13 +26,13 @@ public class LoginController {
         LoginModel loginModel = new LoginModel("00","","");
         model.addAttribute("loginModel",loginModel);
         return "inicio";
-
     }
-    @PostMapping("/autenticar")
-    public String autenticar(@RequestParam("tipoDocumento") String tipoDocumento,
-                             @RequestParam("numeroDocumento") String numeroDocumento,
-                             @RequestParam("password") String password,
-                             Model model) {
+
+    @PostMapping("/authentication")
+    public String authentication(@RequestParam("tipoDocumento") String tipoDocumento,
+                                 @RequestParam("numeroDocumento") String numeroDocumento,
+                                 @RequestParam("password") String password,
+                                 Model model) {
 
         if (tipoDocumento == null || tipoDocumento.trim().length() == 0 ||
                 numeroDocumento == null || numeroDocumento.trim().length() == 0 ||
@@ -42,19 +44,24 @@ public class LoginController {
 
         }
 
-        String backendurl = "http://localhost:8081/autentication/inicio";
-        LoginRestTemplate loginRt = new LoginRestTemplate (tipoDocumento, numeroDocumento, password);
-        LoginModel loginModel = restTemplate.postForObject(backendurl, loginRt, LoginModel.class);
+        String backurl = "http://localhost:8081/autentication/inicio";
+        LoginRequestDTO loginRequestDTO = new LoginRequestDTO(tipoDocumento, numeroDocumento, password);
 
-        if (loginModel != null && "00".equals(loginModel.codigo())) {
-            model.addAttribute("loginModel", loginModel);
-            return "principal";
+        try {
+            LoginResponseDTO response = restTemplate.postForObject(backurl, loginRequestDTO, LoginResponseDTO.class);
+
+            if (response != null && "00".equals(response.codigo())) {
+                model.addAttribute("loginModel", response);
+                return "principal";
+            } else {
+                model.addAttribute("loginModel", new LoginModel("01", "Credenciales Incorrectas", ""));
+                return "inicio";
+            }
+
+        } catch (RestClientException e) {
+            model.addAttribute("loginModel", new LoginModel("99", "Error de conexión al servidor", ""));
+            return "inicio";
         }
-        model.addAttribute("loginModel", new LoginModel("01", "Credenciales Incorrectas", ""));
-        return "inicio";
-
-
-
 
     }
 
